@@ -50,21 +50,24 @@ int main(int argc, char *argv[]){
 		}
 		
 		// -> Antes da execução
-		// Escreve o PID do processo a executar o programa
-		sprintf(info, "%d", pid_exec);
+		sprintf(info, "execute");
 		write(fifo, info, strlen(info) * sizeof(char));
+		// Escreve o PID do processo a executar o programa
+		write(fifo, pid_exec, sizeof(int));
 		// Nome do programa a executar
+		write(fifo, strlen(argv[3]), sizeof(int));
 		write(fifo, argv[3], strlen(argv[3]) * sizeof(char));
 		// Timestamp
 		r = gettimeofday(&antes, NULL);
 		if(r == 0) {
         	sprintf(info, "%u.%06u\n", antes.tv_sec, antes.tv_usec);
+			write(fifo, strlen(info), sizeof(int));
 			write(fifo, info, strlen(info) * sizeof(char));
     	}else{
 			perror("Erro no timestamp.");
 			exit(-1);
 		}
-		// Manda para o utilizador o PID
+		// Manda para o utilizador o PID (stdout)
 		sprintf(info, "Running PID: %d\n", pid_exec);
 		write(1, info, strlen(info) * sizeof(char));
 		// <-

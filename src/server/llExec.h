@@ -1,6 +1,7 @@
 #ifndef LLEXEC_H
 #define LLEXEC_H
 #include <stdio.h>
+#include <string.h>
 #include "exec.h"   
 
 // Lista ligada de structs que representam execuções de comandos
@@ -11,7 +12,9 @@ typedef struct listaLigadaExe{
 
 LLExe initLista();
 
-LLExe insereElem(Exec elem, LLExe lista);
+void insereElem(Exec exec, LLExe* lista);
 
-void printaListaExe(LLExe lista);
+void printaListaExe(LLExe* lista);
+
+void execStatus(LLExe* lista, int fd);
 #endif

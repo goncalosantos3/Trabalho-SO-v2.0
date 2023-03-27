@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "llExec.h"
 
 // Inicia a lista ligada de struct execucao
@@ -9,18 +10,26 @@ LLExe initLista(){
 }
 
 // Esta função insere o elemento à cabeça da lista ligada
-LLExe insereElem(Exec exec, LLExe lista){
+void insereElem(Exec exec, LLExe* lista){
     LLExe elem = malloc(sizeof(struct listaLigadaExe));
     elem->elem = exec;
-    elem->prox = lista;
-    return elem;
+    elem->prox = (*lista);
+    (*lista) = elem;
 }
 
-void printaListaExe(LLExe lista){
-    LLExe *aux = &lista;
+void printaListaExe(LLExe* lista){
 
-    while((*aux) != NULL){
-        printaExec((*aux)->elem);
-        (*aux) = (*aux)->prox;
+    while((*lista) != NULL){
+        printaExec((*lista)->elem);
+        lista = &(*lista)->prox;
+    }
+}
+
+void execStatus(LLExe* lista, int fd){
+    char info[100];
+
+    while((*lista) != NULL){
+        sprintf(info, "%d %s %dms\n", (*lista)->elem->pid, (*lista)->elem->nome, (*lista)->elem->tempo);
+        write(1, info, strlen(info)*sizeof(char));
     }
 }
