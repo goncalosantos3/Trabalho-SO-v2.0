@@ -4,12 +4,9 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "exec.h"
+#include "llExec.h"
 
-typedef struct Execucao { 
-  int pid;          
-  char *nome;
-  int tempo;     
-}*Exec;
 
 int main(int argc, char *argv[]){
 	// Construção do FIFO
@@ -22,13 +19,20 @@ int main(int argc, char *argv[]){
     }
 
 	// Abertura do FIFO
-	int f = open("fifo", O_RDWR);
+	int f = open("../fifo", O_RDWR);
 	if(f == -1){
 		perror("Erro ao abrir FIFO para ler e escrever");
 		exit(-1);
 	}
 
-
-
+    char *execs[3] = {"exe1","exe2","exe3"};
+    LLExe lista = initLista();
+    for(int i=0; i < 3; i++){
+        Exec exec = buildExec(i,i,execs[i]);
+        lista = insereElem(exec, lista);
+    }
+    printaListaExe(lista);
+    printf("Outra vez!\n");
+    printaListaExe(lista);
 	return 0;
 }

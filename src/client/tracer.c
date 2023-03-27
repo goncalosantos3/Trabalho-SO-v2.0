@@ -27,7 +27,7 @@
 */
 
 int main(int argc, char *argv[]){
-	struct timeval now;
+	struct timeval antes, depois;
 	int pid_exec, exit_status, r;
 	char info[100];
 
@@ -42,27 +42,56 @@ int main(int argc, char *argv[]){
 	if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){
 		pid_exec = fork();
 		if(pid_exec == 0){ // É o filho
-			execvp(argv[3], &argv[3]);
-			exit(0);
+			int res = execvp(argv[3], &argv[3]);
+			if(res == -1){
+				perror("Houve algum erro com a execução do comando pretendido.");
+				exit(-1);
+			}
 		}
-
+		
+		// -> Antes da execução
 		// Escreve o PID do processo a executar o programa
 		sprintf(info, "%d", pid_exec);
 		write(fifo, info, strlen(info) * sizeof(char));
 		// Nome do programa a executar
 		write(fifo, argv[3], strlen(argv[3]) * sizeof(char));
 		// Timestamp
-		r = gettimeofday(&now, NULL);
+		r = gettimeofday(&antes, NULL);
 		if(r == 0) {
-        	sprintf(info, "%u.%06u\n", now.tv_sec, now.tv_usec);
+        	sprintf(info, "%u.%06u\n", antes.tv_sec, antes.tv_usec);
 			write(fifo, info, strlen(info) * sizeof(char));
     	}else{
 			perror("Erro no timestamp.");
 			exit(-1);
 		}
-		sprintf(info, "PID do programa a executar: %d\n", pid_exec);
+		// Manda para o utilizador o PID
+		sprintf(info, "Running PID: %d\n", pid_exec);
 		write(1, info, strlen(info) * sizeof(char));
+		// <-
+
+		// Espera que o filho acabe de terminar a execução do programa
+		wait(&exit_status);
+
+		// -> Depois da execução
+		// Escreve o PID do processo que terminou a execução
+		sprintf(info, "%d", pid_exec);
+		write(fifo, info, strlen(info) * sizeof(char));
+		// Timestamp
+		r = gettimeofday(&depois, NULL);
+		if(r == 0) {
+        	sprintf(info, "%u.%06u\n", depois.tv_sec, depois.tv_usec);
+			write(fifo, info, strlen(info) * sizeof(char));
+    	}else{
+			perror("Erro no timestamp.");
+			exit(-1);
+		}
+		// Tempo de execução:
+		float diff = (depois.tv_sec - antes.tv_sec) * 1000;
+		sprintf(info, "Ended in: %.0fms\n", diff);
+		write(1,info,strlen(info)*sizeof(char));
+		// <-
+	}else if(strcmp(argv[1], "status") == 0){ // Status
+		write(fifo, "status", 6 * sizeof(char));
 	}
-	wait(&exit_status);
 	return 0;
 }
