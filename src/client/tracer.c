@@ -42,7 +42,7 @@ int main(int argc, char *argv[]){
 	if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){
 		pid_exec = fork();
 		if(pid_exec == 0){ // É o filho
-			execvp(argv[3], &argv[4]);
+			execvp(argv[3], &argv[3]);
 			exit(0);
 		}
 
