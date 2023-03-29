@@ -26,4 +26,4 @@ obj/tracer.o: src/client/tracer.c
 	gcc -Wall -g -c src/client/tracer.c -o obj/tracer.o
 
 clean:
-	rm -f obj/* tmp/* bin/{tracer,monitor}
+	rm -f fifo_* clients_to_server obj/* tmp/* bin/{tracer,monitor}

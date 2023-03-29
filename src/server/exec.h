@@ -7,10 +7,10 @@
 typedef struct execucao { 
   int pid;          
   char *nome;
-  int tempo;     
+  long tempo;     
 }*Exec;
 
-Exec buildExec(int pid, int tempo, char *nome);
+Exec buildExec(int pid, long tempo, char *nome);
 
 void printaExec(Exec exe);
 #endif

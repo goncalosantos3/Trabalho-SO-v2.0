@@ -1,5 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "llExec.h"
 
 // Inicia a lista ligada de struct execucao
@@ -25,11 +28,34 @@ void printaListaExe(LLExe* lista){
     }
 }
 
-void execStatus(LLExe* lista, int fd){
+// Devolve o número de elementos na lista ligada
+int tamLista(LLExe *lista){
+    int tam = 0;
+
+    while((*lista) != NULL){
+        tam++;
+        lista = &(*lista)->prox;
+    }
+
+    return tam;
+}
+
+void execStatus(LLExe* lista, char *nomeFIFO){
     char info[100];
+    int fout = open(nomeFIFO, O_WRONLY);
+    if(fout == -1){
+        perror("Houve um problema ao abrir o FIFO!");
+    }
+
+    int tam = tamLista(lista);
+    // Manda o número de programas na lista para o cliente
+    write(fout, &tam, sizeof(int));
 
     while((*lista) != NULL){
         sprintf(info, "%d %s %dms\n", (*lista)->elem->pid, (*lista)->elem->nome, (*lista)->elem->tempo);
-        write(1, info, strlen(info)*sizeof(char));
+        tam = strlen(info);
+        write(fout, &tam, sizeof(int));
+        write(fout, info, strlen(info) * sizeof(char));
+        lista = &(*lista)->prox;
     }
 }

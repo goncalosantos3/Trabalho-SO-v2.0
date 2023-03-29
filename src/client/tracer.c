@@ -28,15 +28,36 @@
 
 int main(int argc, char *argv[]){
 	struct timeval antes, depois;
-	int pid_exec, exit_status, r;
-	char info[100];
+	long ts;
+	int pid, pid_exec, exit_status, r, tam;
+	char info[100], nome_fifo[100];
 
-	// Abertura do FIFO
-	int fifo = open("../fifo", O_RDWR);
-	if(fifo == -1){
+	// Abertura do FIFO de escrita
+	// Todos os clientes enviam os seus pedidos ao servidor por este FIFO
+	int fout = open("clients_to_server", O_WRONLY);
+	if(fout == -1){
 		perror("Erro ao abrir o FIFO para escrita e leitura.");
 		exit(-1);
 	}
+
+	// Criação do FIFO de leitura
+	pid = getpid();
+	sprintf(nome_fifo, "fifo_%d", pid);
+	int p = mkfifo(nome_fifo, 0660);
+	if(p==-1){
+        if(errno != EEXIST){// Quando o erro não é o erro de o fifo já existir
+            printf("Erro ao construir fifo\n");
+            exit(-1);
+        }
+    }
+
+	// Abertura do FIFO de leitura
+	int fin = open(nome_fifo, O_RDONLY);
+	if(fin == -1){
+		perror("Erro ao abrir o FIFO para escrita e leitura.");
+		exit(-1);
+	}
+
 
 	// Execução de um comando
 	if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){
@@ -50,19 +71,20 @@ int main(int argc, char *argv[]){
 		}
 		
 		// -> Antes da execução
-		sprintf(info, "execute");
-		write(fifo, info, strlen(info) * sizeof(char));
+		// Avisa o servidor que é uma execução de um comando
+		sprintf(info, "exec");
+		write(fout, info, strlen(info) * sizeof(char));
 		// Escreve o PID do processo a executar o programa
-		write(fifo, pid_exec, sizeof(int));
+		write(fout, &pid_exec, sizeof(int));
 		// Nome do programa a executar
-		write(fifo, strlen(argv[3]), sizeof(int));
-		write(fifo, argv[3], strlen(argv[3]) * sizeof(char));
+		tam = strlen(argv[3]);
+		write(fout, &tam, sizeof(int));
+		write(fout, argv[3], strlen(argv[3]) * sizeof(char));
 		// Timestamp
 		r = gettimeofday(&antes, NULL);
 		if(r == 0) {
-        	sprintf(info, "%u.%06u\n", antes.tv_sec, antes.tv_usec);
-			write(fifo, strlen(info), sizeof(int));
-			write(fifo, info, strlen(info) * sizeof(char));
+        	ts = antes.tv_sec * 1000000 + antes.tv_usec;
+			write(fout, &ts, sizeof(long));
     	}else{
 			perror("Erro no timestamp.");
 			exit(-1);
@@ -78,12 +100,12 @@ int main(int argc, char *argv[]){
 		// -> Depois da execução
 		// Escreve o PID do processo que terminou a execução
 		sprintf(info, "%d", pid_exec);
-		write(fifo, info, strlen(info) * sizeof(char));
+		write(fout, info, strlen(info) * sizeof(char));
 		// Timestamp
 		r = gettimeofday(&depois, NULL);
 		if(r == 0) {
-        	sprintf(info, "%u.%06u\n", depois.tv_sec, depois.tv_usec);
-			write(fifo, info, strlen(info) * sizeof(char));
+        	ts = depois.tv_sec + depois.tv_usec;
+			write(fout, info, strlen(info) * sizeof(char));
     	}else{
 			perror("Erro no timestamp.");
 			exit(-1);
@@ -94,7 +116,22 @@ int main(int argc, char *argv[]){
 		write(1,info,strlen(info)*sizeof(char));
 		// <-
 	}else if(strcmp(argv[1], "status") == 0){ // Status
-		write(fifo, "status", 6 * sizeof(char));
+		sprintf(info, "stat"); 
+		write(fout, info, strlen(info) * sizeof(char));
+		
+		// Manda o nome do FIFO para o servidor enviar as respostas
+		tam = strlen(nome_fifo);
+		write(fout, &tam, sizeof(int));
+		write(fout, nome_fifo, strlen(nome_fifo) * sizeof(char));
+		
+		// Número de programas
+		read(fin, &tam, sizeof(int));
+		int nr = tam;
+		for(int i=0; i<nr; i++){
+			read(fin, &tam, sizeof(int));
+			read(fin, info, tam * sizeof(char));
+			write(1, info, tam * sizeof(char));
+		}
 	}
 	return 0;
 }

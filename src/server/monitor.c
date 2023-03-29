@@ -9,11 +9,13 @@
 
 
 int main(int argc, char *argv[]){
+    long tempo;
     int n, pid, tam;
-    char info[100], nome[100], tempo[100];
+    char info[100], nome[100];
 
 	// Construção do FIFO
-	int p = mkfifo("../fifo",0660);
+    // Este FIFO vai ser o FIFO utilizado por todos os clientes para fazer pedidos ao servidor
+	int p = mkfifo("clients_to_server",0660);
     if(p==-1){
         if(errno != EEXIST){// Quando o erro não é o erro de o fifo já existir
             printf("Erro ao construir fifo\n");
@@ -22,34 +24,48 @@ int main(int argc, char *argv[]){
     }
 
 	// Abertura do FIFO
-	int fifo = open("../fifo", O_RDWR);
-	if(fifo == -1){
+    // O servidor apenas lê deste FIFO
+	int fin = open("clients_to_server", O_RDONLY);
+	if(fin == -1){
 		perror("Erro ao abrir FIFO para ler e escrever");
 		exit(-1);
 	}
 
+    int fout = open("clients_to_server", O_WRONLY);
+    if(fout == -1) {
+        printf("%s\n", strerror(errno));
+        exit(-1);
+    }
+
     // Lista que vai ter as execuções atuais
     LLExe l = initLista();
     LLExe *lista = &l;
-    while((n=read(fifo,info,sizeof(info))) > 0){
-        if(strcmp(info,"status") == 0){ // Status de todos os programas
+    while((n=read(fin,info,4 * sizeof(char))) > 0){
+        printf("Info: %s\n", info);
+        if(strcmp(info,"stat") == 0){ // Status de todos os programas
             printf("Status!");
-            execStatus(lista, fifo); // Envia a informação para o cliente
-        }else if(strcmp(info, "execute") == 0){ // Execução de um programa
+
+            // Recebe o nome do FIFO de escrita
+            read(fin, &tam, sizeof(int));
+            read(fin, info, tam * sizeof(char));
+
+            execStatus(lista, info); // Envia a informação para o cliente
+        }else if(strcmp(info, "exec") == 0){ // Execução de um programa
             printf("Execute!\n");
             // PID
-            read(fifo, &pid, sizeof(int));
+            read(fin, &pid, sizeof(int));
+            printf("PID: %d\n", pid);
             // Nome
-            read(fifo, &tam, sizeof(int));
-            read(fifo, nome, tam * sizeof(char));
+            read(fin, &tam, sizeof(int));
+            read(fin, &nome, tam * sizeof(char));
+            printf("Nome: %s\n", nome);
             // TimeStamp
-            read(fifo, &tam, sizeof(int));
-            read(fifo, tempo, tam * sizeof(char));
+            read(fin, &tempo, sizeof(long));
+            printf("TimeStamp: %lli\n", tempo);
 
-            // buildExec(pid, tempo, nome);
-            printf("%d %s %s\n", pid, nome, tempo);
+            Exec exe = buildExec(pid, tempo, nome);
+            insereElem(exe, lista);
         } 
-        printf("Olá\n");
     }
 
 	return 0;

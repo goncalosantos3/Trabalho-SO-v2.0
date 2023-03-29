@@ -16,5 +16,5 @@ void insereElem(Exec exec, LLExe* lista);
 
 void printaListaExe(LLExe* lista);
 
-void execStatus(LLExe* lista, int fd);
+void execStatus(LLExe* lista, char *nomeFIFO);
 #endif
