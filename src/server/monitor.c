@@ -40,18 +40,21 @@ int main(int argc, char *argv[]){
     // Lista que vai ter as execuções atuais
     LLExe l = initLista();
     LLExe *lista = &l;
-    while((n=read(fin,info,4 * sizeof(char))) > 0){
+    while((n=read(fin,info,6 * sizeof(char))) > 0){
         printf("Info: %s\n", info);
-        if(strcmp(info,"stat") == 0){ // Status de todos os programas
+        if(strcmp(info,"status") == 0){ // Status de todos os programas
             printf("Status!");
-
             // Recebe o nome do FIFO de escrita
             read(fin, &tam, sizeof(int));
             read(fin, info, tam * sizeof(char));
 
-            execStatus(lista, info); // Envia a informação para o cliente
-        }else if(strcmp(info, "exec") == 0){ // Execução de um programa
-            printf("Execute!\n");
+            // Um processo filho trata os pedidos "status"
+            if(fork() == 0){
+                execStatus(lista, info); // Envia a informação para o cliente
+                exit(0);
+            }
+        }else if(strcmp(info, "execan") == 0){ // Pré execução de um programa
+            printf("Execute antes!\n");
             // PID
             read(fin, &pid, sizeof(int));
             printf("PID: %d\n", pid);
@@ -65,7 +68,19 @@ int main(int argc, char *argv[]){
 
             Exec exe = buildExec(pid, tempo, nome);
             insereElem(exe, lista);
-        } 
+        }else if(strcmp(info, "execde") == 0){ // Pós execução de um programa
+            printf("Execute depois!\n");
+
+            // PID
+            read(fin, &pid, sizeof(int));
+            printf("PID: %d\n", pid);
+            // TimeStamp
+            read(fin, &tempo, sizeof(long));
+            printf("TimeStamp: %lli\n", tempo);
+
+            // Remove o programa da lista ligada que terminou a sua execução
+            removeElem(pid, lista);
+        }
     }
 
 	return 0;

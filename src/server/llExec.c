@@ -20,6 +20,23 @@ void insereElem(Exec exec, LLExe* lista){
     (*lista) = elem;
 }
 
+// Remove da lista ligada um programa que já terminou a sua execução
+void removeElem(int pid, LLExe* lista){
+    Exec aux;
+    int removido = 0;
+
+    while((*lista) != NULL && removido == 0){
+        if((*lista)->elem->pid == pid){
+            aux = (*lista)->elem;
+            (*lista) = (*lista)->prox;
+            free(aux); // Liberta a memória do elemento removido
+            removido = 1;
+        }else{
+            lista = &(*lista)->prox;
+        }
+    }   
+}
+
 void printaListaExe(LLExe* lista){
 
     while((*lista) != NULL){

@@ -51,16 +51,10 @@ int main(int argc, char *argv[]){
         }
     }
 
-	// Abertura do FIFO de leitura
-	int fin = open(nome_fifo, O_RDONLY);
-	if(fin == -1){
-		perror("Erro ao abrir o FIFO para escrita e leitura.");
-		exit(-1);
-	}
-
 
 	// Execução de um comando
 	if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){
+
 		pid_exec = fork();
 		if(pid_exec == 0){ // É o filho
 			int res = execvp(argv[3], &argv[3]);
@@ -72,7 +66,7 @@ int main(int argc, char *argv[]){
 		
 		// -> Antes da execução
 		// Avisa o servidor que é uma execução de um comando
-		sprintf(info, "exec");
+		sprintf(info, "execan");
 		write(fout, info, strlen(info) * sizeof(char));
 		// Escreve o PID do processo a executar o programa
 		write(fout, &pid_exec, sizeof(int));
@@ -98,14 +92,16 @@ int main(int argc, char *argv[]){
 		wait(&exit_status);
 
 		// -> Depois da execução
-		// Escreve o PID do processo que terminou a execução
-		sprintf(info, "%d", pid_exec);
+		// Inicia o processo pós-execução
+		sprintf(info, "execde");
 		write(fout, info, strlen(info) * sizeof(char));
+		// Escreve o PID do processo que terminou a execução
+		write(fout, &pid_exec, sizeof(int));
 		// Timestamp
 		r = gettimeofday(&depois, NULL);
 		if(r == 0) {
-        	ts = depois.tv_sec + depois.tv_usec;
-			write(fout, info, strlen(info) * sizeof(char));
+        	ts = depois.tv_sec * 1000000 + depois.tv_usec;
+			write(fout, &ts, sizeof(long));
     	}else{
 			perror("Erro no timestamp.");
 			exit(-1);
@@ -116,7 +112,7 @@ int main(int argc, char *argv[]){
 		write(1,info,strlen(info)*sizeof(char));
 		// <-
 	}else if(strcmp(argv[1], "status") == 0){ // Status
-		sprintf(info, "stat"); 
+		sprintf(info, "status"); 
 		write(fout, info, strlen(info) * sizeof(char));
 		
 		// Manda o nome do FIFO para o servidor enviar as respostas
@@ -124,6 +120,13 @@ int main(int argc, char *argv[]){
 		write(fout, &tam, sizeof(int));
 		write(fout, nome_fifo, strlen(nome_fifo) * sizeof(char));
 		
+		// Abertura do FIFO de leitura
+		int fin = open(nome_fifo, O_RDONLY);
+		if(fin == -1){
+			perror("Erro ao abrir o FIFO para escrita e leitura.");
+			exit(-1);
+		}
+
 		// Número de programas
 		read(fin, &tam, sizeof(int));
 		int nr = tam;
