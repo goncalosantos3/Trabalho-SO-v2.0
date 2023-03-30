@@ -1,8 +1,3 @@
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include "llExec.h"
 
 // Inicia a lista ligada de struct execucao
@@ -68,8 +63,15 @@ void execStatus(LLExe* lista, char *nomeFIFO){
     // Manda o número de programas na lista para o cliente
     write(fout, &tam, sizeof(int));
 
+    if(tam == 0){
+        sprintf(info, "No programs to show!\n");
+        tam = strlen(info);
+        write(fout, &tam, sizeof(int));
+        write(fout, info, tam * sizeof(char));
+    }
+
     while((*lista) != NULL){
-        sprintf(info, "%d %s %dms\n", (*lista)->elem->pid, (*lista)->elem->nome, (*lista)->elem->tempo);
+        sprintf(info, "%d %s %lims\n", (*lista)->elem->pid, (*lista)->elem->nome, (*lista)->elem->tempo);
         tam = strlen(info);
         write(fout, &tam, sizeof(int));
         write(fout, info, strlen(info) * sizeof(char));

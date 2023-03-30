@@ -19,11 +19,14 @@ obj/exec.o: src/server/exec.c src/server/exec.h
 obj/llExec.o: src/server/llExec.c src/server/llExec.h
 	gcc -Wall -g -c src/server/llExec.c -o obj/llExec.o
 
-bin/tracer: obj/tracer.o 
-	gcc -g obj/tracer.o -o bin/tracer
+bin/tracer: obj/tracer.o obj/exePrograms.o
+	gcc -g obj/tracer.o obj/exePrograms.o -o bin/tracer
 
 obj/tracer.o: src/client/tracer.c
 	gcc -Wall -g -c src/client/tracer.c -o obj/tracer.o
 
+obj/exePrograms.o: src/client/exePrograms.c src/client/exePrograms.h
+	gcc -Wall -g -c src/client/exePrograms.c -o obj/exePrograms.o
+
 clean:
-	rm -f fifo_* clients_to_server obj/* tmp/* bin/{tracer,monitor}
+	rm -f obj/* tmp/* bin/{tracer,monitor}

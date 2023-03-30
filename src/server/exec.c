@@ -12,5 +12,5 @@ Exec buildExec(int pid, long tempo, char *nome){
 }
 
 void printaExec(Exec exe){
-    printf("PID: %d\nNome: %s\nTempo: %lli\n", exe->pid, exe->nome, exe->tempo);
+    printf("PID: %d\nNome: %s\nTempo: %li\n", exe->pid, exe->nome, exe->tempo);
 }

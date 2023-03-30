@@ -8,6 +8,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include "exePrograms.h"
 
 /*
 *	Execução de programas do utilizador:
@@ -26,6 +27,18 @@
 *		  (em milisegundos) utilizado pelo programa.
 */
 
+// Diferentes invocações válidas do tracer
+
+/*
+* ./tracer execute -u "prog-a arg-1 (...) arg-n" (execução de um comando básico)
+* ./tracer execute -p "prog-a arg-1 (...) arg-n | prog-b arg-1 (...) arg-n (execução de uma pipeline de comandos)
+* ./tracer status (status dos programas em execução)
+* ./tracer stats-time PID-1 PID-2 (...) PID-N (tempo total de programas terminados)
+* ./tracer stats-command prog-a PID-1 PID-2 (...) PID-N (número de vezes que um programa foi executado)
+* ./tracer stats-uniq PID-1 PID-2 (...) PID-N (lista de programas únicos executados)
+*/
+
+
 int main(int argc, char *argv[]){
 	struct timeval antes, depois;
 	long ts;
@@ -34,7 +47,7 @@ int main(int argc, char *argv[]){
 
 	// Abertura do FIFO de escrita
 	// Todos os clientes enviam os seus pedidos ao servidor por este FIFO
-	int fout = open("clients_to_server", O_WRONLY);
+	int fout = open("/tmp/clients_to_server", O_WRONLY);
 	if(fout == -1){
 		perror("Erro ao abrir o FIFO para escrita e leitura.");
 		exit(-1);
@@ -42,7 +55,7 @@ int main(int argc, char *argv[]){
 
 	// Criação do FIFO de leitura
 	pid = getpid();
-	sprintf(nome_fifo, "fifo_%d", pid);
+	sprintf(nome_fifo, "/tmp/fifo_%d", pid);
 	int p = mkfifo(nome_fifo, 0660);
 	if(p==-1){
         if(errno != EEXIST){// Quando o erro não é o erro de o fifo já existir
@@ -51,10 +64,10 @@ int main(int argc, char *argv[]){
         }
     }
 
-
-	// Execução de um comando
-	if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){
-
+	if(argc == 1 || (strcmp(argv[1], "execute") != 0 && strcmp(argv[1],"status") != 0)){
+		sprintf(info, "Invocação inválida do tracer!\n");
+		write(1, info, strlen(info) * sizeof(char));
+	}else if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){ // Execução de um comando básico
 		pid_exec = fork();
 		if(pid_exec == 0){ // É o filho
 			int res = execvp(argv[3], &argv[3]);
@@ -111,6 +124,9 @@ int main(int argc, char *argv[]){
 		sprintf(info, "Ended in: %.0fms\n", diff);
 		write(1,info,strlen(info)*sizeof(char));
 		// <-
+	}else if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-p") == 0){ // Execução de uma pipeline de programas
+		printf("Pipeline de programas!\n");
+		executeProgramPipeLine(argv[3]);
 	}else if(strcmp(argv[1], "status") == 0){ // Status
 		sprintf(info, "status"); 
 		write(fout, info, strlen(info) * sizeof(char));
@@ -130,6 +146,13 @@ int main(int argc, char *argv[]){
 		// Número de programas
 		read(fin, &tam, sizeof(int));
 		int nr = tam;
+
+		if(nr == 0){
+			read(fin, &tam, sizeof(int));
+			read(fin, info, tam * sizeof(char));
+			write(1, info, tam * sizeof(char));
+		}
+
 		for(int i=0; i<nr; i++){
 			read(fin, &tam, sizeof(int));
 			read(fin, info, tam * sizeof(char));

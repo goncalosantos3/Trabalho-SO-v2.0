@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@ int main(int argc, char *argv[]){
 
 	// Construção do FIFO
     // Este FIFO vai ser o FIFO utilizado por todos os clientes para fazer pedidos ao servidor
-	int p = mkfifo("clients_to_server",0660);
+	int p = mkfifo("/tmp/clients_to_server",0660);
     if(p==-1){
         if(errno != EEXIST){// Quando o erro não é o erro de o fifo já existir
             printf("Erro ao construir fifo\n");
@@ -25,13 +26,13 @@ int main(int argc, char *argv[]){
 
 	// Abertura do FIFO
     // O servidor apenas lê deste FIFO
-	int fin = open("clients_to_server", O_RDONLY);
+	int fin = open("/tmp/clients_to_server", O_RDONLY);
 	if(fin == -1){
 		perror("Erro ao abrir FIFO para ler e escrever");
 		exit(-1);
 	}
 
-    int fout = open("clients_to_server", O_WRONLY);
+    int fout = open("/tmp/clients_to_server", O_WRONLY);
     if(fout == -1) {
         printf("%s\n", strerror(errno));
         exit(-1);
@@ -40,10 +41,11 @@ int main(int argc, char *argv[]){
     // Lista que vai ter as execuções atuais
     LLExe l = initLista();
     LLExe *lista = &l;
-    while((n=read(fin,info,6 * sizeof(char))) > 0){
+    while((n=read(fin, info, 6 * sizeof(char))) > 0){
+        info[6] = '\0';
         printf("Info: %s\n", info);
         if(strcmp(info,"status") == 0){ // Status de todos os programas
-            printf("Status!");
+            printf("Status!\n");
             // Recebe o nome do FIFO de escrita
             read(fin, &tam, sizeof(int));
             read(fin, info, tam * sizeof(char));
@@ -64,7 +66,7 @@ int main(int argc, char *argv[]){
             printf("Nome: %s\n", nome);
             // TimeStamp
             read(fin, &tempo, sizeof(long));
-            printf("TimeStamp: %lli\n", tempo);
+            printf("TimeStamp: %li\n", tempo);
 
             Exec exe = buildExec(pid, tempo, nome);
             insereElem(exe, lista);
@@ -76,7 +78,7 @@ int main(int argc, char *argv[]){
             printf("PID: %d\n", pid);
             // TimeStamp
             read(fin, &tempo, sizeof(long));
-            printf("TimeStamp: %lli\n", tempo);
+            printf("TimeStamp: %li\n", tempo);
 
             // Remove o programa da lista ligada que terminou a sua execução
             removeElem(pid, lista);
