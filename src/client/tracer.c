@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include "exePrograms.h"
@@ -40,9 +39,7 @@
 
 
 int main(int argc, char *argv[]){
-	struct timeval antes, depois;
-	long ts;
-	int pid, pid_exec, exit_status, r, tam;
+	int pid, tam;
 	char info[100], nome_fifo[100];
 
 	// Abertura do FIFO de escrita
@@ -68,62 +65,7 @@ int main(int argc, char *argv[]){
 		sprintf(info, "Invocação inválida do tracer!\n");
 		write(1, info, strlen(info) * sizeof(char));
 	}else if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-u") == 0){ // Execução de um comando básico
-		pid_exec = fork();
-		if(pid_exec == 0){ // É o filho
-			int res = execvp(argv[3], &argv[3]);
-			if(res == -1){
-				perror("Houve algum erro com a execução do comando pretendido.");
-				exit(-1);
-			}
-		}
-		
-		// -> Antes da execução
-		// Avisa o servidor que é uma execução de um comando
-		sprintf(info, "execan");
-		write(fout, info, strlen(info) * sizeof(char));
-		// Escreve o PID do processo a executar o programa
-		write(fout, &pid_exec, sizeof(int));
-		// Nome do programa a executar
-		tam = strlen(argv[3]);
-		write(fout, &tam, sizeof(int));
-		write(fout, argv[3], strlen(argv[3]) * sizeof(char));
-		// Timestamp
-		r = gettimeofday(&antes, NULL);
-		if(r == 0) {
-        	ts = antes.tv_sec * 1000000 + antes.tv_usec;
-			write(fout, &ts, sizeof(long));
-    	}else{
-			perror("Erro no timestamp.");
-			exit(-1);
-		}
-		// Manda para o utilizador o PID (stdout)
-		sprintf(info, "Running PID: %d\n", pid_exec);
-		write(1, info, strlen(info) * sizeof(char));
-		// <-
-
-		// Espera que o filho acabe de terminar a execução do programa
-		wait(&exit_status);
-
-		// -> Depois da execução
-		// Inicia o processo pós-execução
-		sprintf(info, "execde");
-		write(fout, info, strlen(info) * sizeof(char));
-		// Escreve o PID do processo que terminou a execução
-		write(fout, &pid_exec, sizeof(int));
-		// Timestamp
-		r = gettimeofday(&depois, NULL);
-		if(r == 0) {
-        	ts = depois.tv_sec * 1000000 + depois.tv_usec;
-			write(fout, &ts, sizeof(long));
-    	}else{
-			perror("Erro no timestamp.");
-			exit(-1);
-		}
-		// Tempo de execução:
-		float diff = (depois.tv_sec - antes.tv_sec) * 1000;
-		sprintf(info, "Ended in: %.0fms\n", diff);
-		write(1,info,strlen(info)*sizeof(char));
-		// <-
+		executeBasicProgram(&argv[3], argc, fout);
 	}else if(strcmp(argv[1], "execute") == 0 && strcmp(argv[2], "-p") == 0){ // Execução de uma pipeline de programas
 		printf("Pipeline de programas!\n");
 		executeProgramPipeLine(argv[3]);

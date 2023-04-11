@@ -1,23 +1,99 @@
 #include "exePrograms.h"
 
-void executeBasicProgram(char *command[]){
+// Exemplo: ls | grep myFile | wc -l
+void executeBasicProgram(char *command[], int argc, int fout){
+    struct timeval antes, depois;
+    int n = 0, pid_exec;
+    char info[100];
 
+    int pipefd[2];
+    pipe(pipefd);
+
+    if((pid_exec = fork()) == 0){ // Filho vai executar o comando
+        close(pipefd[1]); // O filho só vai ler deste pipe
+        read(pipefd[0], &n, sizeof(int));
+        read(pipefd[0], info, n*sizeof(char));
+        close(pipefd[0]);
+
+        if(strcmp(info, "continua") != 0){
+            perror("Não pude começar a execução do comando prentendido");
+			exit(-1);
+        }
+
+        int res = execvp(command[0], command);
+		if(res == -1){
+			perror("Houve algum erro com a execução do comando pretendido.");
+			exit(-1);
+		}
+    }
+    close(pipefd[0]); // O pai só vai escrever para este pipe
+
+	// -> Antes da execução
+	// Avisa o servidor que é uma execução de um comando
+	sprintf(info, "execan");
+	write(fout, info, strlen(info) * sizeof(char));
+	// Escreve o PID do processo a executar o programa
+	write(fout, &pid_exec, sizeof(int));
+	// Nome do programa a executar
+	n = strlen(command[0]);
+	write(fout, &n, sizeof(int));
+	write(fout, command[0], n * sizeof(char));
+	// Timestamp
+	int r = gettimeofday(&antes, NULL);
+    long ts;
+	if(r == 0) {
+    	ts = antes.tv_sec * 1000000 + antes.tv_usec;
+		write(fout, &ts, sizeof(long));
+    }else{
+		perror("Erro no timestamp.");
+		exit(-1);
+	}
+	// Manda para o utilizador o PID (stdout)
+	sprintf(info, "Running PID: %d\n", pid_exec);
+	write(1, info, strlen(info) * sizeof(char));
+	// <-
+    
+    // Avisa o filho para começar a executar
+    sprintf(info, "continua");
+    n = strlen(info);
+    write(pipefd[1], &n, sizeof(int));
+    write(pipefd[1], info, n*sizeof(char));
+
+	// Espera que o filho acabe de terminar a execução do programa
+	wait(NULL);
+	// -> Depois da execução
+	// Inicia o processo pós-execução
+	sprintf(info, "execde");
+	write(fout, info, strlen(info) * sizeof(char));
+	// Escreve o PID do processo que terminou a execução
+	write(fout, &pid_exec, sizeof(int));
+	// Timestamp
+	r = gettimeofday(&depois, NULL);
+	if(r == 0) {
+    	ts = depois.tv_sec * 1000000 + depois.tv_usec;
+		write(fout, &ts, sizeof(long));
+    }else{
+		perror("Erro no timestamp.");
+		exit(-1);
+	}
+	// Tempo de execução (para o stdout):
+	float diff = (depois.tv_usec - antes.tv_usec) / 1000;
+	sprintf(info, "Ended in: %.0fms\n", diff);
+	write(1,info,strlen(info)*sizeof(char));
+	// <-
 }
 
 // prog1 a b c | prog2 d e f
 void executeProgramPipeLine(char *command){
-    int nrpipes = 0, i = 0, nresp = 0;
-    char *token, *token2;
+    int nrpipes = 0, i = 0;
+    char *token;
     const char delimiter[2] = "|";
-    const char delimiter2[2] = " ";
 
     printf("Command: %s\n", command);
 
     while(command[i] != '\0'){
         if(command[i] == '|'){
             nrpipes++;
-        }else if(command[i] == ' '){
-            nresp++;
         }
         i++;
     }
@@ -33,14 +109,9 @@ void executeProgramPipeLine(char *command){
         i++;
     }
 
-    int tam = i;
-    i = 0;
-    while(i < tam){
-        token2 = strtok(commands[i], delimiter2);
-        while(token2 != NULL){
-            printf("Token2: %s\n", token2);
-            token2 = strtok(NULL, delimiter2);
-        }
+    i=0;
+    while(i<nrpipes+1){
+        printf("%d: %s\n", i, commands[i]);
         i++;
     }
 
@@ -54,6 +125,17 @@ void executeProgramPipeLine(char *command){
     for(i=0; i<nrpipes+1; i++){
         // Cria o filho
         if(fork() == 0){
+            int n = 0, j = 0;
+
+            while(commands[i][j] != '\0'){
+                if(commands[i][j] == ' '){
+                    n++;
+                }
+                j++;
+            }
+            
+            char *myCommand[n];
+
             if(i==0){ // Primeiro filho
                 // O primeiro filho apenas escreve para o primeiro pipe
                 close(pipes[0][0]);
@@ -73,4 +155,3 @@ void executeProgramPipeLine(char *command){
         }
     }
 }
-
