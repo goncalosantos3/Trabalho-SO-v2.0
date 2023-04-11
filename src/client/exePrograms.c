@@ -6,15 +6,18 @@ void executeBasicProgram(char *command[]){
 
 // prog1 a b c | prog2 d e f
 void executeProgramPipeLine(char *command){
-    int nrpipes = 0, i = 0, r;
-    char *token;
+    int nrpipes = 0, i = 0, nresp = 0;
+    char *token, *token2;
     const char delimiter[2] = "|";
+    const char delimiter2[2] = " ";
 
     printf("Command: %s\n", command);
 
     while(command[i] != '\0'){
         if(command[i] == '|'){
             nrpipes++;
+        }else if(command[i] == ' '){
+            nresp++;
         }
         i++;
     }
@@ -24,8 +27,20 @@ void executeProgramPipeLine(char *command){
 
     token = strtok(command, delimiter);
     while (token != NULL) {
-        commands[i] = token;
+        commands[i] = token;    
+        printf("Token: %s\n", token);
         token = strtok(NULL, delimiter);
+        i++;
+    }
+
+    int tam = i;
+    i = 0;
+    while(i < tam){
+        token2 = strtok(commands[i], delimiter2);
+        while(token2 != NULL){
+            printf("Token2: %s\n", token2);
+            token2 = strtok(NULL, delimiter2);
+        }
         i++;
     }
 
